@@ -1,0 +1,12 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "module": "esnext",
+      "moduleResolution": "node",
+      "target": "es2020",
+      "esModuleInterop": true,
+      "resolveJsonModule": true,
+      "types": ["node", "hardhat"]
+    },
+    "include": ["hardhat.config.*", "scripts", "contracts", "test"]
+  }

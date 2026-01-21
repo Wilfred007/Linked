@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique
+  role          String    // "SPONSOR" | "PARTNER"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  sponsoredRelationships Relationship[] @relation("Sponsor")
+  receivedRelationships  Relationship[] @relation("Partner")
+}
+
+model Relationship {
+  id            String    @id @default(cuid())
+  sponsorId     String
+  partnerId     String
+  status        String    // "PROPOSED", "ACTIVE", "PAUSED", "EXPIRED", "TERMINATED"
+  pricingModel  String    // "DAILY", "PER_MESSAGE"
+  rate          Float     // Amount in USDC
+  startDate     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sponsor       User      @relation("Sponsor", fields: [sponsorId], references: [id])
+  partner       User      @relation("Partner", fields: [partnerId], references: [id])
+  payments      Payment[]
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  relationshipId String
+  txHash         String   @unique
+  amount         Float
+  status         String   // "PENDING", "COMPLETED", "FAILED"
+  timestamp      DateTime @default(now())
+
+  relationship   Relationship @relation(fields: [relationshipId], references: [id])
+}

@@ -1,0 +1,7 @@
+{
+  "network": "cronosTestnet",
+  "chainId": 338,
+  "mockUSDC": "0x81a2fe069326142a3F1Dc8185D9FCfb90f2956A6",
+  "relationshipManager": "0x5e18Ac204b5A8a22eB5bAA3Dd2Ac3d551e80449c",
+  "deployedAt": "2026-01-21T18:42:38.340Z"
+}
