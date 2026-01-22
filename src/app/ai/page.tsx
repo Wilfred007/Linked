@@ -1,6 +1,6 @@
-import dynamic from "next/dynamic";
+"use client";
 
-const Chat = dynamic(() => import("@/components/ai/Chat"), { ssr: false });
+import Chat from "@/components/ai/Chat";
 
 export default function AIPage() {
   return (
