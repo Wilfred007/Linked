@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits } from "viem";
+import { parseUnits, isAddress } from "viem";
+import { ethers } from "ethers";
 import { contracts } from "@/lib/wagmi";
 import RelationshipManagerABI from "@/lib/abis/RelationshipManager.json";
 
@@ -13,19 +14,47 @@ export default function ProposeRelationship() {
         pricingModel: "0", // 0 = DAILY, 1 = PER_MESSAGE
         rate: "",
     });
+    const [error, setError] = useState<string | null>(null);
 
     const { writeContract, data: hash, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
+    const ensureCronos = async () => {
+        if (!(window as any).ethereum) throw new Error("Wallet not found");
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const network = await provider.getNetwork();
+        // 25 = Cronos Mainnet, 338 = Cronos Testnet
+        const allowed = network.chainId === 25n || network.chainId === 338n;
+        if (!allowed) throw new Error("Please switch MetaMask to Cronos network (Testnet/Mainnet)");
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
 
         if (!address || !contracts.relationshipManager) {
-            alert("Please connect your wallet and ensure contracts are deployed");
+            setError("Please connect your wallet and ensure contracts are deployed");
+            return;
+        }
+
+        // Basic validations to avoid on-chain revert
+        if (!isAddress(formData.partnerAddress)) {
+            setError("Invalid partner address");
+            return;
+        }
+        if (formData.partnerAddress.toLowerCase() === address.toLowerCase()) {
+            setError("Cannot propose to yourself");
+            return;
+        }
+        const numericRate = Number(formData.rate);
+        if (!Number.isFinite(numericRate) || numericRate <= 0) {
+            setError("Rate must be greater than 0");
             return;
         }
 
         try {
+            await ensureCronos();
+
             // Convert rate to USDC format (6 decimals)
             const rateInUSDC = parseUnits(formData.rate, 6);
 
@@ -38,19 +67,26 @@ export default function ProposeRelationship() {
                     parseInt(formData.pricingModel),
                     rateInUSDC,
                 ],
+                gas: 500000n, // Set explicit gas limit
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error proposing relationship:", error);
-            alert("Failed to propose relationship");
+            setError(error?.message || "Failed to propose relationship");
         }
     };
 
-    if (isSuccess) {
-        setTimeout(() => {
-            setFormData({ partnerAddress: "", pricingModel: "0", rate: "" });
-            window.location.reload();
-        }, 2000);
-    }
+    // Handle success state - moved to useEffect to avoid side effects during render
+    useEffect(() => {
+        if (isSuccess) {
+            const timer = setTimeout(() => {
+                setFormData({ partnerAddress: "", pricingModel: "0", rate: "" });
+                setError(null);
+                window.location.reload();
+            }, 2000);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [isSuccess]);
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6">
@@ -95,6 +131,10 @@ export default function ProposeRelationship() {
                         className="w-full p-3 border rounded-lg dark:bg-zinc-800 dark:border-zinc-700"
                     />
                 </div>
+
+                {error && (
+                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                )}
 
                 <button
                     type="submit"
